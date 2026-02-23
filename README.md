@@ -5,11 +5,12 @@ A GitHub App that automatically generates a `documentation.md` file for reposito
 ## What it does
 
 - Triggers on pushes to the default branch.
-- Can also be triggered manually via `repository_dispatch` with action `generate-documentation`.
+- It can also be triggered manually via `repository_dispatch` with action `generate-documentation`.
 - Reads existing `README.md` content (even if sparse or empty).
 - Reads repository source files.
 - Uses an LLM to produce comprehensive documentation with Mermaid diagrams.
 - Commits/updates `documentation.md` in the same branch.
+- Avoids committing loops by ignoring pushes created by the app actor itself.
 
 ## Why this matches your request
 
@@ -33,6 +34,9 @@ export GITHUB_PRIVATE_KEY="<pem-with-escaped-newlines>"
 export GITHUB_WEBHOOK_SECRET="<webhook-secret>"
 export OPENAI_API_KEY="<openai-key>"
 export OPENAI_MODEL="gpt-4.1-mini" # optional
+export DOC_AGENT_COMMIT_ACTOR="doc-agent-github-app" # optional
+export MAX_CONCURRENT_FILE_READS="8" # optional
+export OPENAI_TIMEOUT_MS="30000" # optional
 export PORT="3000" # optional
 ```
 
@@ -60,6 +64,8 @@ To trigger generation outside a push event, call GitHub's repository dispatch AP
 
 ## Notes
 
+- Secret-like files and potential secret content are excluded from prompt construction.
 - Very large/binary files are filtered out before prompt construction.
 - The app truncates very long files to keep token usage bounded.
 - `documentation.md` is regenerated each run.
+- The webhook returns `202 Accepted` quickly and performs generation in a background job.

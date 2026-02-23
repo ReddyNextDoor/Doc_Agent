@@ -1,22 +1,8 @@
-import crypto from "node:crypto";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/core";
 
-export function verifyWebhookSignature(rawBody, signatureHeader, webhookSecret) {
-  if (!signatureHeader || !signatureHeader.startsWith("sha256=")) {
-    return false;
-  }
-
-  const expected = `sha256=${crypto
-    .createHmac("sha256", webhookSecret)
-    .update(rawBody)
-    .digest("hex")}`;
-
-  return crypto.timingSafeEqual(Buffer.from(signatureHeader), Buffer.from(expected));
-}
-
 export async function getInstallationOctokit({ appId, privateKey, installationId }) {
-  const appOctokit = new Octokit({
+  return new Octokit({
     authStrategy: createAppAuth,
     auth: {
       appId,
@@ -24,8 +10,6 @@ export async function getInstallationOctokit({ appId, privateKey, installationId
       installationId
     }
   });
-
-  return appOctokit;
 }
 
 export async function listRepositoryFiles(octokit, owner, repo, branch) {
@@ -44,7 +28,10 @@ export async function listRepositoryFiles(octokit, owner, repo, branch) {
     recursive: "1"
   });
 
-  return treeResponse.data.tree.filter((item) => item.type === "blob");
+  return {
+    files: treeResponse.data.tree.filter((item) => item.type === "blob"),
+    truncated: Boolean(treeResponse.data.truncated)
+  };
 }
 
 export async function getFileContent(octokit, owner, repo, path, ref) {
@@ -61,14 +48,7 @@ export async function getFileContent(octokit, owner, repo, path, ref) {
   return String(response.data);
 }
 
-export async function upsertDocumentationFile(
-  octokit,
-  owner,
-  repo,
-  branch,
-  content,
-  actor = "documentation-agent"
-) {
+export async function upsertDocumentationFile(octokit, owner, repo, branch, content, actor) {
   let existingSha;
 
   try {
@@ -80,7 +60,10 @@ export async function upsertDocumentationFile(
     });
 
     existingSha = existing.data.sha;
-  } catch {
+  } catch (error) {
+    if (error.status !== 404) {
+      throw error;
+    }
     existingSha = undefined;
   }
 
