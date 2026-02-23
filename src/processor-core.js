@@ -77,7 +77,8 @@ export async function processRepositoryCore({ installationId, owner, repo, branc
     owner,
     repo,
     branch,
-    snapshot
+    snapshot,
+    timeoutMs: runtimeConfig.openaiTimeoutMs
   });
 
   await github.upsertDocumentationFile(octokit, owner, repo, branch, documentation, runtimeConfig.commitActor);

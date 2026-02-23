@@ -31,6 +31,7 @@ test("verifyWebhookSignature returns false on mismatched lengths without throwin
 test("processRepositoryCore filters paths before reading and skips suspected secrets", async () => {
   const readPaths = [];
   let upsertArgs;
+  let snapshotPaths;
 
   const deps = {
     runtimeConfig: {
@@ -62,7 +63,10 @@ test("processRepositoryCore filters paths before reading and skips suspected sec
     docs: {
       shouldIncludePath,
       hasPotentialSecret,
-      buildRepositorySnapshot: (_readme, files) => JSON.stringify(files.map((f) => f.path)),
+      buildRepositorySnapshot: (_readme, files) => {
+        snapshotPaths = files.map((f) => f.path);
+        return JSON.stringify(snapshotPaths);
+      },
       generateDocumentation: async () => "# generated"
     },
     logger: {
@@ -76,6 +80,7 @@ test("processRepositoryCore filters paths before reading and skips suspected sec
   assert.equal(readPaths.includes("src/a.js"), true);
   assert.equal(readPaths.includes(".env"), false);
   assert.equal(readPaths.includes("documentation.md"), false);
+  assert.deepEqual(snapshotPaths, ["README.md"]);
   assert.equal(upsertArgs[5], "doc-agent-github-app");
 });
 
@@ -113,4 +118,8 @@ test("processRepositoryCore warns when tree is truncated", async () => {
 
   await processRepositoryCore({ installationId: 1, owner: "o", repo: "r", branch: "main" }, deps);
   assert.equal(warnings.length > 0, true);
+
+  const truncationWarning = warnings.find((entry) => String(entry[1]).includes("truncated"));
+  assert.equal(Boolean(truncationWarning), true);
+  assert.match(String(truncationWarning[1]), /truncated/i);
 });

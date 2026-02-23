@@ -60,7 +60,10 @@ export function buildRepositorySnapshot(readme, files) {
   ].join("\n");
 }
 
-export async function generateDocumentation({ apiKey, model, owner, repo, branch, snapshot }) {
+export async function generateDocumentation({ apiKey, model, owner, repo, branch, snapshot, timeoutMs = 30000 }) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -81,7 +84,10 @@ export async function generateDocumentation({ apiKey, model, owner, repo, branch
         }
       ],
       temperature: 0.2
-    })
+    }),
+    signal: controller.signal
+  }).finally(() => {
+    clearTimeout(timeout);
   });
 
   if (!response.ok) {

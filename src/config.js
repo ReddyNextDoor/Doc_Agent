@@ -18,6 +18,14 @@ function parsePort(value, fallback) {
   return parsed;
 }
 
+function parsePositiveInt(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
 export const config = {
   appId: required("GITHUB_APP_ID"),
   privateKey: required("GITHUB_PRIVATE_KEY").replace(/\\n/g, "\n"),
@@ -26,5 +34,6 @@ export const config = {
   llmModel: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
   port: parsePort(process.env.PORT ?? "3000", 3000),
   commitActor: process.env.DOC_AGENT_COMMIT_ACTOR ?? "doc-agent-github-app",
-  maxConcurrentFileReads: parsePort(process.env.MAX_CONCURRENT_FILE_READS ?? "8", 8)
+  maxConcurrentFileReads: parsePositiveInt(process.env.MAX_CONCURRENT_FILE_READS ?? "8", 8),
+  openaiTimeoutMs: parsePositiveInt(process.env.OPENAI_TIMEOUT_MS ?? "30000", 30000)
 };

@@ -36,6 +36,7 @@ export OPENAI_API_KEY="<openai-key>"
 export OPENAI_MODEL="gpt-4.1-mini" # optional
 export DOC_AGENT_COMMIT_ACTOR="doc-agent-github-app" # optional
 export MAX_CONCURRENT_FILE_READS="8" # optional
+export OPENAI_TIMEOUT_MS="30000" # optional
 export PORT="3000" # optional
 ```
 
