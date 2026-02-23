@@ -1,6 +1,7 @@
 import { buildRepositorySnapshot, generateDocumentation, hasPotentialSecret, shouldIncludePath } from "./documentation.js";
 
 async function mapWithConcurrency(items, limit, mapper) {
+  const safeLimit = Math.max(1, Number(limit) || 1);
   const results = new Array(items.length);
   let index = 0;
 
@@ -12,7 +13,7 @@ async function mapWithConcurrency(items, limit, mapper) {
     }
   }
 
-  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+  const workers = Array.from({ length: Math.min(safeLimit, items.length) }, () => worker());
   await Promise.all(workers);
   return results;
 }
@@ -49,7 +50,9 @@ export async function processRepositoryCore({ installationId, owner, repo, branc
     );
   }
 
-  const candidateFiles = tree.filter((item) => item.path && docs.shouldIncludePath(item.path));
+  const candidateFiles = tree.filter(
+    (item) => item.path && item.path.toLowerCase() !== "readme.md" && docs.shouldIncludePath(item.path)
+  );
 
   const loadedFiles = await mapWithConcurrency(
     candidateFiles,

@@ -80,8 +80,55 @@ test("processRepositoryCore filters paths before reading and skips suspected sec
   assert.equal(readPaths.includes("src/a.js"), true);
   assert.equal(readPaths.includes(".env"), false);
   assert.equal(readPaths.includes("documentation.md"), false);
-  assert.deepEqual(snapshotPaths, ["README.md"]);
+  assert.equal(readPaths.filter((path) => path === "README.md").length, 1);
+  assert.deepEqual(snapshotPaths, []);
   assert.equal(upsertArgs[5], "doc-agent-github-app");
+});
+
+test("processRepositoryCore uses safe fallback when maxConcurrentFileReads is invalid", async () => {
+  const readPaths = [];
+  let snapshotPaths;
+
+  const deps = {
+    runtimeConfig: {
+      appId: "1",
+      privateKey: "key",
+      webhookSecret: "secret",
+      llmApiKey: "openai",
+      llmModel: "gpt-4.1-mini",
+      port: 3000,
+      commitActor: "doc-agent-github-app",
+      maxConcurrentFileReads: 0
+    },
+    github: {
+      getInstallationOctokit: async () => ({ mocked: true }),
+      listRepositoryFiles: async () => ({ files: [{ path: "src/a.js" }], truncated: false }),
+      getFileContent: async (_octokit, _owner, _repo, path) => {
+        readPaths.push(path);
+        if (path === "README.md") return "# title";
+        return "console.log('ok')";
+      },
+      upsertDocumentationFile: async () => {}
+    },
+    docs: {
+      shouldIncludePath,
+      hasPotentialSecret,
+      buildRepositorySnapshot: (_readme, files) => {
+        snapshotPaths = files.map((f) => f.path);
+        return JSON.stringify(snapshotPaths);
+      },
+      generateDocumentation: async () => "# generated"
+    },
+    logger: {
+      warn: () => {},
+      error: () => {}
+    }
+  };
+
+  await processRepositoryCore({ installationId: 1, owner: "o", repo: "r", branch: "main" }, deps);
+
+  assert.equal(readPaths.includes("src/a.js"), true);
+  assert.deepEqual(snapshotPaths, ["src/a.js"]);
 });
 
 test("processRepositoryCore warns when tree is truncated", async () => {
